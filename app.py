@@ -16,6 +16,7 @@ st.set_page_config(
 
 st.title("📐 DXF to 1:1 Scale PDF Converter")
 st.write("Upload a DXF file to render and export to PDF with exact scale.")
+st.write("ranjith.wijekoon@gmail.com")
 
 # Sidebar Settings
 st.sidebar.header("Scale & Unit Settings")
