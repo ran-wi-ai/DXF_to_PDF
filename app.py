@@ -16,11 +16,16 @@ from ezdxf.fonts import font_manager
 # --- CRITICAL FIX FOR TEXT/MTEXT BOX ISSUE ---
 options.load_text_layout = True
 
-# Map missing/CAD fonts (e.g., txt.shx, simplex.shx) to system TTF fonts (e.g., Arial / Sans-Serif)
-font_manager.load()
-# Fallback font mapping when SHX/CAD fonts are not natively installed
-font_manager.has_font("arial.ttf")
+from ezdxf.fonts import font_manager
 
+# --- CRITICAL FIX FOR TEXT/MTEXT BOX ISSUE & FONT LOADING ---
+options.load_text_layout = True
+
+# Scan system TTF fonts for CAD text rendering (works across ezdxf versions)
+try:
+    font_manager.cache.scan_system_fonts()
+except AttributeError:
+    pass  # Fallback for ezdxf versions that handle caching internally
 st.set_page_config(
     page_title="CAD (DXF) to PDF / Image Converter",
     page_icon="📐",
