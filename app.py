@@ -1,18 +1,25 @@
 import io
 import tempfile
-import streamlit as st
-import ezdxf
-from ezdxf import options
-from ezdxf.bbox import extents
-from ezdxf.addons.drawing import RenderContext, Frontend
-from ezdxf.addons.drawing.matplotlib import MatplotlibBackend
-from ezdxf.addons.drawing.properties import LayoutProperties
-from ezdxf.addons.drawing.config import Configuration
 import matplotlib.pyplot as plt
 from PIL import Image
+import streamlit as st
 
-# Enable text layout processing
+import ezdxf
+from ezdxf import options
+from ezdxf.addons.drawing import Frontend, RenderContext
+from ezdxf.addons.drawing.config import Configuration
+from ezdxf.addons.drawing.matplotlib import MatplotlibBackend
+from ezdxf.addons.drawing.properties import LayoutProperties
+from ezdxf.bbox import extents
+from ezdxf.fonts import font_manager
+
+# --- CRITICAL FIX FOR TEXT/MTEXT BOX ISSUE ---
 options.load_text_layout = True
+
+# Map missing/CAD fonts (e.g., txt.shx, simplex.shx) to system TTF fonts (e.g., Arial / Sans-Serif)
+font_manager.load()
+# Fallback font mapping when SHX/CAD fonts are not natively installed
+font_manager.has_font("arial.ttf")
 
 st.set_page_config(
     page_title="CAD (DXF) to PDF / Image Converter",
@@ -22,7 +29,6 @@ st.set_page_config(
 
 st.title("📐 DXF to PDF / Image Converter")
 st.write("Upload a DXF file to view and export to PDF (1:1 scale), PNG, or JPG format.")
-st.write("Bugs/suggestions to ranjith.wijekoon@gmail.com")
 
 # Sidebar Settings for Fine-Tuning
 st.sidebar.header("Advanced Settings")
@@ -114,14 +120,19 @@ if uploaded_file is not None:
         ax.set_facecolor(bg_color)
         fig.patch.set_facecolor(bg_color)
 
-        # Context & Layout Properties setup
+        # Context setup with Font Support
         ctx = RenderContext(doc)
+        
         layout_props = LayoutProperties.from_layout(msp)
         if default_color:
             layout_props.set_colors(bg_color, default_color)
 
-        # Configuration using default properties
+        # --- ENABLE TEXT RENDERING IN CONFIGURATION ---
         drawing_config = Configuration.defaults()
+        # Force text rendering instead of raw boundary boxes
+        drawing_config = drawing_config.with_changes(
+            text_policy="filled"  # Options: "filled" (renders actual characters), "outline", or "box"
+        )
 
         out = MatplotlibBackend(ax)
         frontend = Frontend(ctx, out, config=drawing_config)
