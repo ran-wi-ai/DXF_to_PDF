@@ -22,6 +22,7 @@ st.set_page_config(
 
 st.title("📐 DXF to PDF / Image Converter")
 st.write("Upload a DXF file to view and export to PDF (1:1 scale), PNG, or JPG format.")
+st.write("Bugs/suggestions to ranjith.wijekoon@gmail.com")
 
 # Sidebar Settings
 st.sidebar.header("Advanced Settings")
