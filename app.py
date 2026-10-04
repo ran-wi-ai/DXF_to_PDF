@@ -13,25 +13,23 @@ from ezdxf.addons.drawing.properties import LayoutProperties
 from ezdxf.bbox import extents
 from ezdxf.fonts import font_manager
 
-# --- CRITICAL FIX FOR SHX TEXT & POINT NUMBERS ---
+# Enable text layout processing engine
 options.load_text_layout = True
 
-# 1. Force ezdxf to map common CAD SHX fonts to standard system fonts
-font_manager.map_shx_to_ttf({
-    "txt.shx": "DejaVuSans.ttf",
-    "simplex.shx": "DejaVuSans.ttf",
-    "romans.shx": "DejaVuSans.ttf",
-    "complex.shx": "DejaVuSans.ttf",
-    "isocp.shx": "DejaVuSans.ttf",
-})
+# Map standard SHX stroke font names commonly used for point numbers to system TTF
+try:
+    font_manager.map_shx_to_ttf({
+        "txt.shx": "DejaVuSans.ttf",
+        "simplex.shx": "DejaVuSans.ttf",
+        "romans.shx": "DejaVuSans.ttf",
+        "complex.shx": "DejaVuSans.ttf",
+        "isocp.shx": "DejaVuSans.ttf",
+        "txt": "DejaVuSans.ttf",
+        "simplex": "DejaVuSans.ttf"
+    })
+except Exception:
+    pass
 
-st.set_page_config(
-    page_title="CAD (DXF) to PDF / Image Converter",
-    page_icon="📐",
-    layout="wide"
-)
-
-# ... [keep your UI sidebar & file upload logic unchanged] ...
 st.set_page_config(
     page_title="CAD (DXF) to PDF / Image Converter",
     page_icon="📐",
@@ -41,7 +39,7 @@ st.set_page_config(
 st.title("📐 DXF to PDF / Image Converter")
 st.write("Upload a DXF file to view and export to PDF (1:1 scale), PNG, or JPG format.")
 
-# Sidebar Settings for Fine-Tuning
+# Sidebar Settings
 st.sidebar.header("Advanced Settings")
 
 dxf_unit = st.sidebar.selectbox(
@@ -58,14 +56,13 @@ color_theme = st.sidebar.selectbox(
     index=0
 )
 
-# Conversion factors to inches for physical paper/canvas sizing
 unit_scale_to_inches = {
     "Millimeters (mm)": 1.0 / 25.4,
     "Meters (m)": 1000.0 / 25.4,
     "Inches (in)": 1.0
 }
 
-# Top Main Section - Explicit Container for Radio Controls
+# Top Main Section Controls
 with st.container():
     st.subheader("1. Select Output Format")
     output_format = st.radio(
@@ -81,7 +78,6 @@ uploaded_file = st.file_uploader("Choose a DXF file", type=["dxf"])
 
 if uploaded_file is not None:
     try:
-        # Save temporary DXF
         with tempfile.NamedTemporaryFile(delete=False, suffix=".dxf") as tmp_file:
             tmp_file.write(uploaded_file.getvalue())
             tmp_path = tmp_file.name
@@ -89,7 +85,6 @@ if uploaded_file is not None:
         doc = ezdxf.readfile(tmp_path)
         msp = doc.modelspace()
 
-        # Compute bounding box of entities in modelspace
         bbox = extents(msp)
         if not bbox.has_data:
             st.error("The DXF file appears to be empty or contains no valid geometry in Modelspace.")
@@ -107,14 +102,12 @@ if uploaded_file is not None:
 
         st.info(f"**Bounding Box Extents:** {width_units:.2f} × {height_units:.2f} drawing units")
 
-        # Convert units to physical inches for 1:1 scale
         scale_factor = unit_scale_to_inches[dxf_unit]
         pdf_width_in = width_units * scale_factor
         pdf_height_in = height_units * scale_factor
 
         st.write(f"**Target Dimensions (1:1 Scale):** {pdf_width_in:.2f} in × {pdf_height_in:.2f} in ({pdf_width_in * 25.4:.1f} mm × {pdf_height_in * 25.4:.1f} mm)")
 
-        # Determine Background & Line Colors
         if "Black Lines" in color_theme:
             bg_color = "#FFFFFF"
             default_color = "#000000"
@@ -125,37 +118,32 @@ if uploaded_file is not None:
             bg_color = "#FFFFFF"
             default_color = None
 
-        # Setup Figure matching exact drawing physical aspect ratio
         fig = plt.figure(figsize=(pdf_width_in, pdf_height_in), dpi=dpi)
         ax = fig.add_axes([0, 0, 1, 1])
         ax.set_facecolor(bg_color)
         fig.patch.set_facecolor(bg_color)
 
-        # Context setup with Font Support
         ctx = RenderContext(doc)
-        
+
         layout_props = LayoutProperties.from_layout(msp)
         if default_color:
             layout_props.set_colors(bg_color, default_color)
 
-        # --- ENABLE TEXT RENDERING IN CONFIGURATION ---
-        drawing_config = Configuration.defaults()
-        # Force text rendering instead of raw boundary boxes
-        drawing_config = drawing_config.with_changes(
-            text_policy="filled"  # Options: "filled" (renders actual characters), "outline", or "box"
+        # Force 'replace' policy to ensure missing fonts draw actual characters
+        drawing_config = Configuration.defaults().with_changes(
+            text_policy="replace"
         )
 
         out = MatplotlibBackend(ax)
         frontend = Frontend(ctx, out, config=drawing_config)
         frontend.draw_layout(msp, layout_properties=layout_props, finalize=True)
 
-        # Explicitly enforce coordinate limits matching the bounding box
         ax.set_xlim(min_x, max_x)
         ax.set_ylim(min_y, max_y)
         ax.set_aspect("equal", adjustable="box")
         ax.axis("off")
 
-        # --- EXPORT TO BUFFER BEFORE PREVIEW ---
+        # --- EXPORT TO BUFFER ---
         export_buffer = io.BytesIO()
 
         if output_format == "PDF":
@@ -199,7 +187,7 @@ if uploaded_file is not None:
 
         export_buffer.seek(0)
 
-        # --- RENDER PREVIEW IN STREAMLIT ---
+        # --- PREVIEW ---
         st.subheader("3. Preview")
         st.pyplot(fig)
         plt.close(fig)
