@@ -13,19 +13,25 @@ from ezdxf.addons.drawing.properties import LayoutProperties
 from ezdxf.bbox import extents
 from ezdxf.fonts import font_manager
 
-# --- CRITICAL FIX FOR TEXT/MTEXT BOX ISSUE ---
+# --- CRITICAL FIX FOR SHX TEXT & POINT NUMBERS ---
 options.load_text_layout = True
 
-from ezdxf.fonts import font_manager
+# 1. Force ezdxf to map common CAD SHX fonts to standard system fonts
+font_manager.map_shx_to_ttf({
+    "txt.shx": "DejaVuSans.ttf",
+    "simplex.shx": "DejaVuSans.ttf",
+    "romans.shx": "DejaVuSans.ttf",
+    "complex.shx": "DejaVuSans.ttf",
+    "isocp.shx": "DejaVuSans.ttf",
+})
 
-# --- CRITICAL FIX FOR TEXT/MTEXT BOX ISSUE & FONT LOADING ---
-options.load_text_layout = True
+st.set_page_config(
+    page_title="CAD (DXF) to PDF / Image Converter",
+    page_icon="📐",
+    layout="wide"
+)
 
-# Scan system TTF fonts for CAD text rendering (works across ezdxf versions)
-try:
-    font_manager.cache.scan_system_fonts()
-except AttributeError:
-    pass  # Fallback for ezdxf versions that handle caching internally
+# ... [keep your UI sidebar & file upload logic unchanged] ...
 st.set_page_config(
     page_title="CAD (DXF) to PDF / Image Converter",
     page_icon="📐",
